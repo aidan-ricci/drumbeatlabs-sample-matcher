@@ -1,0 +1,41 @@
+{
+  "name": "creator-assignment-matcher",
+  "version": "1.0.0",
+  "description": "Intelligent creator assignment matching system",
+  "main": "index.js",
+  "scripts": {
+    "setup": "./scripts/setup.sh",
+    "dev": "docker-compose up --build",
+    "start": "docker-compose up -d",
+    "stop": "docker-compose down",
+    "logs": "docker-compose logs -f",
+    "clean": "docker-compose down -v --remove-orphans",
+    "test": "npm run test:services",
+    "test:services": "cd services/api-gateway && npm test && cd ../assignment-service && npm test && cd ../creator-service && npm test && cd ../matching-service && npm test",
+    "build": "docker-compose build",
+    "health": "curl -f http://localhost:3000/health",
+    "seed:creators": "node scripts/seed-creators.js",
+    "migrate": "cd services/assignment-service && npm run migrate"
+  },
+  "keywords": [
+    "creator",
+    "assignment",
+    "matching",
+    "ai",
+    "microservices",
+    "docker"
+  ],
+  "author": "Creator Assignment Matcher Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "joi": "^18.0.2",
+    "mongoose": "^9.1.5"
+  }
+}

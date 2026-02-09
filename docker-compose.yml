@@ -1,0 +1,140 @@
+services:
+  # Frontend Service
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+    environment:
+      - REACT_APP_API_URL=http://localhost:3000/api
+    networks:
+      - creator-matcher-network
+    restart: unless-stopped
+
+  # API Gateway Service
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - ASSIGNMENT_SERVICE_URL=http://assignment-service:3001
+      - CREATOR_SERVICE_URL=http://creator-service:3002
+      - MATCHING_SERVICE_URL=http://matching-service:3003
+      - SERVERLESS_READY=true
+    depends_on:
+      - assignment-service
+      - creator-service
+      - matching-service
+    networks:
+      - creator-matcher-network
+    restart: unless-stopped
+
+  # Assignment Service
+  assignment-service:
+    build:
+      context: .
+      dockerfile: services/assignment-service/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/creator-assignment-matcher
+      - CONNECTION_POOL_SIZE=5
+      - SERVERLESS_READY=true
+    depends_on:
+      - mongodb
+    networks:
+      - creator-matcher-network
+    restart: unless-stopped
+
+  # Creator Service
+  creator-service:
+    build:
+      context: .
+      dockerfile: services/creator-service/Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT:-us-west1-gcp}
+      - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-creator-embeddings}
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - BEDROCK_EMBEDDING_MODEL=${BEDROCK_EMBEDDING_MODEL}
+      - BEDROCK_COMPLETION_MODEL=${BEDROCK_COMPLETION_MODEL}
+      - SERVERLESS_READY=true
+      - COLD_START_OPTIMIZATION=true
+    networks:
+      - creator-matcher-network
+    restart: unless-stopped
+
+  # Matching Service
+  matching-service:
+    build:
+      context: .
+      dockerfile: services/matching-service/Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT:-us-west1-gcp}
+      - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-creator-embeddings}
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - BEDROCK_EMBEDDING_MODEL=${BEDROCK_EMBEDDING_MODEL}
+      - BEDROCK_COMPLETION_MODEL=${BEDROCK_COMPLETION_MODEL}
+      - CREATOR_SERVICE_URL=http://creator-service:3002
+      - ASSIGNMENT_SERVICE_URL=http://assignment-service:3001
+      - SERVERLESS_READY=true
+      - STATELESS_MODE=true
+    depends_on:
+      - creator-service
+    networks:
+      - creator-matcher-network
+    restart: unless-stopped
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:6-jammy
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=creator-assignment-matcher
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - creator-matcher-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  creator-matcher-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

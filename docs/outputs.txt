@@ -1,0 +1,19 @@
+
+What we’re evaluating:
+We’re looking for strong signals in these areas:
+Product & UX thinking (primary)
+Clear, intuitive flow (someone unfamiliar can use it)
+Good defaults, labels, and layout
+Thoughtful states (loading, empty, errors)
+Results presentation that helps a user make a decision
+Engineering judgment
+Pragmatic scope choices within reasonable time period
+Clean structure and readability
+Reasonable tradeoffs (speed vs correctness vs extensibility)
+Matching approach
+A defensible method for selecting the best 3, especially in cases where the perfect match doesn’t necessarily exist
+Clear reasoning about what signals matter and why
+AI integration quality
+Outputs are tailored and useful (not generic)
+Prompting/guardrails show good judgment
+You can explain how you’d harden it for production, and where in your judgement it doesn’t make sense to use AI

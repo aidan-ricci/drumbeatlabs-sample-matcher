@@ -1,0 +1,92 @@
+service: creator-assignment-matcher-matching-service
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  timeout: 30
+  memorySize: 1024
+  
+  environment:
+    NODE_ENV: production
+    SERVERLESS_READY: true
+    PINECONE_API_KEY: ${env:PINECONE_API_KEY}
+    PINECONE_INDEX_NAME: ${env:PINECONE_INDEX_NAME, 'creator-embeddings'}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    MONGODB_URI: ${env:MONGODB_URI}
+    CONNECTION_POOL_SIZE: 3
+    COLD_START_OPTIMIZATION: true
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: '*'
+
+functions:
+  matchingService:
+    handler: serverless/handler.handler
+    timeout: 60  # Matching can take longer
+    memorySize: 1536
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+      - http:
+          path: /
+          method: ANY
+          cors: true
+    
+    # Warm-up configuration to reduce cold starts
+    warmup:
+      enabled: true
+      events:
+        - schedule: rate(5 minutes)
+      concurrency: 1
+
+  # Individual function for matching
+  findMatches:
+    handler: serverless/handler.findMatches
+    timeout: 60
+    memorySize: 1536
+    events:
+      - http:
+          path: /matches
+          method: post
+          cors: true
+
+  # Health check function
+  healthCheck:
+    handler: serverless/handler.healthCheck
+    events:
+      - http:
+          path: /health
+          method: get
+          cors: true
+
+plugins:
+  - serverless-warmup
+  - serverless-offline
+
+custom:
+  warmup:
+    folderName: '.warmup'
+    cleanFolder: false
+    memorySize: 256
+    name: '${self:service}-${self:provider.stage}-warmup-plugin'
+    role: WarmUpPluginDefaultRole
+    tags:
+      Project: creator-assignment-matcher
+      Environment: ${self:provider.stage}
+
+  serverless-offline:
+    httpPort: 3003
+    host: 0.0.0.0

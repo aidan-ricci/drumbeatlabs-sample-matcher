@@ -1,0 +1,46 @@
+{
+    "name": "drumbeat-labs-tests",
+    "version": "1.0.0",
+    "description": "Comprehensive test suite for Drumbeat Labs Creator Matcher",
+    "scripts": {
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage",
+        "test:properties": "jest --testPathPattern=properties",
+        "test:integration": "jest --testPathPattern=integration",
+        "test:unit": "jest --testPathPattern=unit",
+        "test:all": "npm run test:unit && npm run test:properties && npm run test:integration"
+    },
+    "devDependencies": {
+        "@types/jest": "^29.5.0",
+        "autocannon": "^8.0.0",
+        "fast-check": "^3.15.0",
+        "jest": "^29.5.0",
+        "supertest": "^7.2.2"
+    },
+    "jest": {
+        "testEnvironment": "node",
+        "coverageDirectory": "coverage",
+        "collectCoverageFrom": [
+            "services/**/*.js",
+            "shared/**/*.js",
+            "frontend/src/**/*.{js,jsx,ts,tsx}",
+            "!**/node_modules/**",
+            "!**/__tests__/**",
+            "!**/coverage/**"
+        ],
+        "testMatch": [
+            "**/__tests__/**/*.test.js",
+            "**/tests/**/*.test.js",
+            "**/e2e/**/*.test.js"
+        ],
+        "coverageThreshold": {
+            "global": {
+                "branches": 70,
+                "functions": 70,
+                "lines": 70,
+                "statements": 70
+            }
+        }
+    }
+}

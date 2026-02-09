@@ -1,0 +1,128 @@
+service: creator-assignment-matcher-creator-service
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  timeout: 30
+  memorySize: 512
+  
+  environment:
+    NODE_ENV: production
+    SERVERLESS_READY: true
+    PINECONE_API_KEY: ${env:PINECONE_API_KEY}
+    PINECONE_INDEX_NAME: ${env:PINECONE_INDEX_NAME, 'creator-embeddings'}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    CONNECTION_POOL_SIZE: 3
+    COLD_START_OPTIMIZATION: true
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: '*'
+
+functions:
+  creatorService:
+    handler: serverless/handler.handler
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+      - http:
+          path: /
+          method: ANY
+          cors: true
+    
+    # Warm-up configuration to reduce cold starts
+    warmup:
+      enabled: true
+      events:
+        - schedule: rate(5 minutes)
+      concurrency: 1
+
+  # Individual functions for better scaling
+  getCreators:
+    handler: serverless/handler.getCreators
+    events:
+      - http:
+          path: /creators
+          method: get
+          cors: true
+
+  getCreatorById:
+    handler: serverless/handler.getCreatorById
+    events:
+      - http:
+          path: /creators/{id}
+          method: get
+          cors: true
+
+  ingestCreators:
+    handler: serverless/handler.ingestCreators
+    timeout: 300  # 5 minutes for data ingestion
+    memorySize: 1024
+    events:
+      - http:
+          path: /creators/ingest
+          method: post
+          cors: true
+
+  generateEmbeddings:
+    handler: serverless/handler.generateEmbeddings
+    timeout: 300  # 5 minutes for embedding generation
+    memorySize: 1024
+    events:
+      - http:
+          path: /creators/embeddings
+          method: post
+          cors: true
+
+  searchCreators:
+    handler: serverless/handler.searchCreators
+    events:
+      - http:
+          path: /creators/search
+          method: post
+          cors: true
+
+  refreshEmbeddings:
+    handler: serverless/handler.refreshEmbeddings
+    timeout: 900  # 15 minutes for full refresh
+    memorySize: 2048
+    events:
+      - http:
+          path: /creators/embeddings/refresh
+          method: post
+          cors: true
+      # Scheduled refresh every 6 hours
+      - schedule:
+          rate: rate(6 hours)
+          enabled: false  # Enable manually when needed
+
+plugins:
+  - serverless-warmup
+  - serverless-offline
+
+custom:
+  warmup:
+    folderName: '.warmup'
+    cleanFolder: false
+    memorySize: 256
+    name: '${self:service}-${self:provider.stage}-warmup-plugin'
+    role: WarmUpPluginDefaultRole
+    tags:
+      Project: creator-assignment-matcher
+      Environment: ${self:provider.stage}
+
+  serverless-offline:
+    httpPort: 3002
+    host: 0.0.0.0

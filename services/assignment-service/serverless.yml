@@ -1,0 +1,211 @@
+# Serverless Framework configuration for Assignment Service
+service: creator-assignment-matcher-assignment-service
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 512
+  timeout: 30
+  
+  environment:
+    NODE_ENV: ${self:provider.stage}
+    MONGODB_URI: ${env:MONGODB_URI}
+    SERVERLESS_READY: true
+    LOG_LEVEL: ${env:LOG_LEVEL, 'info'}
+  
+  # IAM permissions for the Lambda functions
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: 
+            - 'arn:aws:logs:${self:provider.region}:*:log-group:/aws/lambda/*:*:*'
+        # Add additional permissions as needed (e.g., for VPC, secrets, etc.)
+
+# Package configuration
+package:
+  patterns:
+    - '!node_modules/.cache/**'
+    - '!.git/**'
+    - '!.vscode/**'
+    - '!*.md'
+    - '!tests/**'
+    - '!coverage/**'
+    - 'node_modules/**'
+    - 'handlers/**'
+    - 'middleware/**'
+    - 'utils/**'
+    - 'serverless/**'
+    - '../../../shared/**'
+
+functions:
+  # Health check function
+  healthCheck:
+    handler: serverless/handler.healthCheckHandler
+    events:
+      - http:
+          path: /health
+          method: get
+          cors: true
+    reservedConcurrency: 5
+
+  # Create assignment function
+  createAssignment:
+    handler: serverless/handler.createAssignmentHandler
+    events:
+      - http:
+          path: /assignments
+          method: post
+          cors: true
+    reservedConcurrency: 10
+
+  # Get assignment by ID function
+  getAssignment:
+    handler: serverless/handler.getAssignmentHandler
+    events:
+      - http:
+          path: /assignments/{id}
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                id: true
+    reservedConcurrency: 20
+
+  # Get assignment history function
+  getAssignmentHistory:
+    handler: serverless/handler.getAssignmentHistoryHandler
+    events:
+      - http:
+          path: /assignments/history/{userId}
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                userId: true
+              querystrings:
+                limit: false
+                skip: false
+                sortBy: false
+                sortOrder: false
+    reservedConcurrency: 15
+
+  # Update assignment matches function
+  updateAssignmentMatches:
+    handler: serverless/handler.updateAssignmentMatchesHandler
+    events:
+      - http:
+          path: /assignments/{id}/matches
+          method: patch
+          cors: true
+          request:
+            parameters:
+              paths:
+                id: true
+    reservedConcurrency: 10
+
+  # Search assignments function
+  searchAssignments:
+    handler: serverless/handler.searchAssignmentsHandler
+    events:
+      - http:
+          path: /assignments/search
+          method: get
+          cors: true
+          request:
+            parameters:
+              querystrings:
+                q: true
+                limit: false
+                skip: false
+    reservedConcurrency: 15
+
+  # List assignments function
+  listAssignments:
+    handler: serverless/handler.listAssignmentsHandler
+    events:
+      - http:
+          path: /assignments
+          method: get
+          cors: true
+          request:
+            parameters:
+              querystrings:
+                limit: false
+                skip: false
+    reservedConcurrency: 20
+
+# CloudFormation resources
+resources:
+  Resources:
+    # API Gateway configuration
+    GatewayResponseDefault4XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: 'RestApiApigEvent'
+    
+    GatewayResponseDefault5XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_5XX
+        RestApiId:
+          Ref: 'RestApiApigEvent'
+
+# Plugins
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+
+# Custom configuration
+custom:
+  # Serverless offline configuration for local development
+  serverless-offline:
+    httpPort: 3001
+    host: 0.0.0.0
+    
+  # Environment-specific settings
+  stages:
+    dev:
+      memorySize: 256
+      timeout: 15
+    staging:
+      memorySize: 512
+      timeout: 30
+    prod:
+      memorySize: 1024
+      timeout: 30
+      reservedConcurrency: 50
+
+# Outputs
+outputs:
+  AssignmentServiceApiUrl:
+    Description: "Assignment Service API Gateway URL"
+    Value:
+      Fn::Join:
+        - ""
+        - - "https://"
+          - Ref: RestApiApigEvent
+          - ".execute-api."
+          - ${self:provider.region}
+          - ".amazonaws.com/"
+          - ${self:provider.stage}
+    Export:
+      Name: ${self:service}-${self:provider.stage}-api-url
