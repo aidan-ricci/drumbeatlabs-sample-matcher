@@ -88,7 +88,7 @@ function validatePagination(req, res, next) {
 function validateObjectId(paramName) {
   return (req, res, next) => {
     const id = req.params[paramName];
-    
+
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -206,7 +206,7 @@ function validateMatchResults(req, res, next) {
   // Validate each match result structure
   for (let i = 0; i < matchResults.length; i++) {
     const match = matchResults[i];
-    
+
     if (!match.creatorId || typeof match.creatorId !== 'string') {
       return res.status(400).json({
         success: false,
@@ -314,7 +314,7 @@ function sanitizeRequest(req, res, next) {
  */
 function validateRateLimit(options = {}) {
   const { windowMs = 60000, max = 100 } = options;
-  
+
   // In a real implementation, this would integrate with Redis or similar
   // For now, this is a placeholder that logs rate limit checks
   return (req, res, next) => {
@@ -323,10 +323,10 @@ function validateRateLimit(options = {}) {
       endpoint: req.path,
       method: req.method
     });
-    
-    // TODO: Implement actual rate limiting logic
-    // This could integrate with Redis, DynamoDB, or other storage
-    
+
+    // Placeholder for rate limiting logic
+    // In production, this would integrate with Redis, DynamoDB, or similar storage
+
     next();
   };
 }
