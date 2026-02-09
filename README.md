@@ -186,6 +186,7 @@ baseScore =
 1. **Improve Matching Algorithm**
    - Refine matching algorithm to better align assignments with creators
       - Make the list of potential niches and tones more specific and deterministic
+         - Add hierarchical niche taxonomy (e.g., Finance → Personal Finance → Budgeting)
       - Make the list of potential values more specific and deterministic
       - Make the list of potential regions more specific and deterministic
       - Refine the semantic matching algorithm to better align assignments with creators
@@ -199,7 +200,12 @@ baseScore =
    - Add buttons for feedback on provided matches
 
 ### **Deployment & Scaling**
-3. **Deployment & scaling**
+3. **Productionization**
+   - Add better logging
+   - Add Authentication
+   - Improve testing + test cases
+   - Integrate with existing data and migrate JSON based user data to MongoDB
+4. **Deployment & scaling**
    - Migrate to Kubernetes on AWS EKS
    - Set up CI/CD pipeline (GitHub Actions → ECR → EKS)
    - Add Redis for session management and caching
