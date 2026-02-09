@@ -1,6 +1,6 @@
 # Creator Assignment Matcher
 
-AI-powered platform for matching content assignments with mission-aligned creators using semantic search and multi-factor scoring.
+AI-powered platform for matching content assignments with mission-aligned creators using semantic search and multi-factor scoring. 
 
 ## How to Run It
 
@@ -42,12 +42,10 @@ npm run dev
 
 ### 1. **Immediate Feedback & Progressive Disclosure**
 - **Single-page flow**: Assignment form → Loading state → Results view
-- **Skeleton loaders**: Show structure while fetching to reduce perceived latency
 - **Inline validation**: Real-time feedback on form inputs (e.g., niche tags, audience locale)
 
 ### 2. **Transparency in Matching**
-- **Score breakdown**: Each match shows semantic similarity, niche alignment, audience match, and value alignment scores
-- **Visual hierarchy**: Top matches prominently displayed with gradient accents
+- **Score breakdown**: Each match shows semantic similarity, niche alignment, audience match with scores. Scores are normalized to 0-100 so they are easier to compare.
 - **Explainability**: Users can see *why* a creator matched (e.g., "2 niche matches", "0.87 semantic similarity")
 
 ### 3. **Minimal Cognitive Load**
@@ -57,7 +55,7 @@ npm run dev
 
 ### 4. **Responsive & Accessible**
 - **Mobile-first design**: Works seamlessly on phones, tablets, and desktops
-- **Glassmorphism aesthetic**: Modern, clean design with subtle animations
+- **Glassmorphism aesthetic**: Modern, clean, and simple design that can be easily improved with more complex animations and interactions
 - **Error handling**: Clear error messages with actionable next steps
 
 ---
@@ -108,8 +106,8 @@ baseScore =
 ### Why This Approach?
 - **Explainable**: Each score component is human-interpretable
 - **Tunable**: Weights can be adjusted based on user feedback
-- **Robust**: Doesn't over-rely on AI (avoids "black box" problem)
-- **Fast**: Vector search returns top candidates in <200ms, then scoring is O(n)
+- **Robust**: Doesn't over-rely on AI (avoids "black box" problem, especially given the short timeline and not having access to a large dataset to refine a real specialized AI system)
+- **Fast**: Vector search returns top candidates in <200ms
 
 ---
 
@@ -117,35 +115,20 @@ baseScore =
 
 ### Provider: **AWS Bedrock** (with OpenAI fallback)
 **Why Bedrock?**
-- ✅ **Cost**: Titan embeddings are ~70% cheaper than OpenAI's `text-embedding-3-small`
-- ✅ **Latency**: Regional deployment (us-east-1) reduces round-trip time
-- ✅ **Compliance**: AWS infrastructure meets enterprise security requirements
+- ✅ **Cost**: Titan embeddings are ~70% cheaper than OpenAI's but similar in quality. Can easily be swapped while the dataset is small based upon needs. Embedding model my need to be changed or finetuned for this specific use case.
 - ✅ **Flexibility**: Easy to swap models (Titan, Claude, Llama) without code changes
-
-**Fallback to OpenAI**:
-- If AWS credentials unavailable, system auto-detects and uses OpenAI
-- Configured via `AI_PROVIDER` env variable or credential presence
 
 ### Models
 
 #### Embeddings: **Amazon Titan Embed Text v1**
-- **Dimensions**: 1,536 (same as OpenAI for easy migration)
 - **Context**: 8,192 tokens (handles long creator bios)
-- **Cost**: $0.0001/1K tokens (vs OpenAI's $0.00013)
 - **Performance**: 95% correlation with OpenAI embeddings in benchmarks
 
-#### Completions: **Claude 3 Haiku**
+#### Completions: **Claude 4.5 Haiku**
 - **Use case**: Future features (e.g., generating outreach emails, summarizing creator content)
+- **Performance**: Fastest Claude model, ideal for low-latency tasks with low thinking requirements like this
 - **Why Haiku**: Fastest Claude model, ideal for low-latency tasks
-- **Cost**: $0.25/1M input tokens (vs GPT-3.5 Turbo's $0.50)
 - **Fallback**: Can switch to Claude Sonnet for higher quality if needed
-
-### Model Selection Strategy
-```javascript
-// Configurable via environment
-BEDROCK_EMBEDDING_MODEL=amazon.titan-embed-text-v1
-BEDROCK_COMPLETION_MODEL=anthropic.claude-3-haiku-20240307-v1:0
-```
 
 ---
 
@@ -159,6 +142,7 @@ BEDROCK_COMPLETION_MODEL=anthropic.claude-3-haiku-20240307-v1:0
 - **Batch processing**: Generate embeddings in batches of 3 (concurrency limit)
 - **Smart indexing**: Only index creators with complete profiles (>100 char bio)
 - **Monitoring**: Log embedding counts and costs per request
+- **Early Costs**: Pinecone scales to ~1M transcations per month for free tier. This will take Drumbeat Labs a while to get to the point where we need to worry about the database itself
 
 **Impact**: Reduced embedding costs by ~80% vs. naive per-request generation
 
@@ -179,18 +163,8 @@ BEDROCK_COMPLETION_MODEL=anthropic.claude-3-haiku-20240307-v1:0
 **Solutions**:
 - **Circuit breaker**: Auto-disable failing services after 5 consecutive errors
   - State: `CLOSED` → `OPEN` (30s timeout) → `HALF_OPEN` (test recovery)
-- **Exponential backoff**: Retry with `2^attempt × 1000ms` delay
 - **Health monitoring**: `/health` endpoints check circuit breaker states
 - **Graceful degradation**: Return cached results if vector search fails
-
-**Example**:
-```javascript
-// Bedrock circuit breaker
-if (failureCount >= 5) {
-  circuitBreakerState = 'OPEN';
-  // Wait 30s before retrying
-}
-```
 
 ### 4. **Safety & Guardrails**
 **Problem**: AI can hallucinate or return inappropriate content
@@ -208,42 +182,28 @@ if (failureCount >= 5) {
 
 ## What I'd Do Next (1-2 More Weeks)
 
-### Week 1: **Enhanced Matching & Personalization**
-1. **Learning-to-rank model**
-   - Collect user feedback (thumbs up/down on matches)
-   - Train XGBoost model to re-rank results based on historical preferences
-   - A/B test against current hybrid scoring
+### **Enhanced Matching & Personalization**
+1. **Improve Matching Algorithm**
+   - Refine matching algorithm to better align assignments with creators
+      - Make the list of potential niches and tones more specific and deterministic
+      - Make the list of potential values more specific and deterministic
+      - Make the list of potential regions more specific and deterministic
+      - Refine the semantic matching algorithm to better align assignments with creators
+   - Add more features to matching algorithm (e.g., niche, values, engagement rate)
 
-2. **Creator portfolio analysis**
-   - Scrape recent TikTok/Instagram posts via APIs
-   - Generate embeddings for actual content (not just bios)
-   - Match against assignment's content style (e.g., "humorous", "educational")
-
-3. **Diversity controls**
-   - Add "diversity slider" to avoid recommending same creators repeatedly
-   - Implement MMR (Maximal Marginal Relevance) for result diversification
-
-### Week 2: **Production Readiness & UX Polish**
-4. **Real-time collaboration**
-   - WebSocket integration for live match updates
-   - Multi-user assignment editing (like Google Docs)
-   - Comment threads on creator profiles
-
-5. **Advanced analytics dashboard**
+### **Advanced Analytics & Reporting**
+2. **Advanced analytics dashboard**
    - Track match acceptance rates by niche/region
    - Visualize creator performance over time
    - Export reports to CSV/PDF
+   - Add buttons for feedback on provided matches
 
-6. **Deployment & scaling**
+### **Deployment & Scaling**
+3. **Deployment & scaling**
    - Migrate to Kubernetes on AWS EKS
    - Set up CI/CD pipeline (GitHub Actions → ECR → EKS)
    - Add Redis for session management and caching
    - Implement auto-scaling based on request volume
-
-7. **Creator onboarding flow**
-   - Self-service portal for creators to update profiles
-   - Automated bio analysis to suggest niches/values
-   - Portfolio upload and embedding generation
 
 ---
 
@@ -271,19 +231,10 @@ User → Frontend → API Gateway → Matching Service
 ```
 
 ### Tech Stack
-- **Runtime**: Node.js 18, TypeScript
+- **Runtime**: Node.js, TypeScript
 - **Databases**: MongoDB (documents), Pinecone (vectors)
-- **AI**: AWS Bedrock (Titan, Claude), OpenAI (fallback)
-- **Infrastructure**: Docker Compose (dev), ready for Kubernetes (prod)
-- **Testing**: Jest, Supertest
-
----
-
-## Contributing
-1. Follow existing code structure (microservices pattern)
-2. Add tests for new features (`npm run test`)
-3. Update this README if adding major functionality
-4. Ensure all health checks pass (`npm run health`)
+- **AI**: AWS Bedrock (Titan, Claude)
+- **Infrastructure**: Docker Compose (dev)
 
 ---
 

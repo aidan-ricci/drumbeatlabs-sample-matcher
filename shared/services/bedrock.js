@@ -15,7 +15,7 @@ class BedrockService {
 
         // Default models
         this.embeddingModelId = process.env.BEDROCK_EMBEDDING_MODEL || 'amazon.titan-embed-text-v1';
-        this.completionModelId = process.env.BEDROCK_COMPLETION_MODEL || 'anthropic.claude-3-haiku-20240307-v1:0';
+        this.completionModelId = process.env.BEDROCK_COMPLETION_MODEL || 'anthropic.claude-3-5-haiku-20241022-v1:0';
     }
 
     async initialize() {
